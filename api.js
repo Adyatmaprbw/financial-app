@@ -70,3 +70,4 @@ function api(action, data) {
     document.body.appendChild(script);
   });
 }
+
