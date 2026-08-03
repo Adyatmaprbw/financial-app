@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Financial Report</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="appWrapper">
+
+  <!-- TOAST -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- CONFIG SCREEN (first time) -->
+  <div id="screenConfig" class="screen" style="display:none">
+    <div style="max-width:360px;margin:0 auto;padding:40px 24px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">💰</div>
+      <h1 style="font-size:24px;font-weight:700;margin-bottom:8px;color:var(--navy)">Financial Report</h1>
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:32px;line-height:1.6">Masukkan URL Google Apps Script kamu untuk menghubungkan ke Google Sheets</p>
+      <div class="form-group" style="text-align:left">
+        <label class="form-label">GAS Web App URL</label>
+        <textarea class="form-input" id="gasUrl" rows="3" placeholder="https://script.google.com/macros/s/.../exec" style="height:auto;padding:14px"></textarea>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="saveConfig()">Sambungkan</button>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:16px">URL disimpan di browser kamu saja, tidak dikirim ke mana pun</p>
+    </div>
+  </div>
+
+  <!-- PAGE: DASHBOARD -->
+  <div class="page active" id="pageDashboard">
+    <div class="page-header">
+      <div class="page-title">Dashboard</div>
+      <button class="btn-icon" onclick="loadDashboard()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 11-6.219-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+      </button>
+    </div>
+
+    <!-- Skeleton -->
+    <div id="dashSkeleton">
+      <div class="skeleton" style="height:140px;border-radius:16px;margin-bottom:12px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="skeleton" style="height:80px;border-radius:16px"></div>
+        <div class="skeleton" style="height:80px;border-radius:16px"></div>
+        <div class="skeleton" style="height:80px;border-radius:16px"></div>
+        <div class="skeleton" style="height:80px;border-radius:16px"></div>
+      </div>
+      <div class="skeleton" style="height:200px;border-radius:16px;margin-bottom:12px"></div>
+    </div>
+
+    <div id="dashContent" style="display:none">
+      <!-- Month nav -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <button class="btn-icon" onclick="changeMonth(-1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <span id="dashMonth" style="flex:1;text-align:center;font-size:15px;font-weight:600;color:var(--navy)"></span>
+        <button class="btn-icon" onclick="changeMonth(1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+
+      <!-- Hero -->
+      <div class="hero-balance">
+        <div style="font-size:13px;opacity:0.75;margin-bottom:4px">Total Saldo</div>
+        <div id="heroBalance" style="font-size:30px;font-weight:700;margin-bottom:4px">Rp 0</div>
+        <div style="font-size:12px;opacity:0.6">Total Asset: <span id="heroAsset">Rp 0</span></div>
+      </div>
+
+      <!-- Summary -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-icon income"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+          <div><div class="summary-label">Income</div><div class="summary-value" id="sumIncome">Rp 0</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon expense"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg></div>
+          <div><div class="summary-label">Expense</div><div class="summary-value" id="sumExpense">Rp 0</div></div>
+        </div>
+        <div class="summary-card" onclick="openDebtListModal()" style="cursor:pointer">
+          <div class="summary-icon saving"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+          <div><div class="summary-label">Piutang</div><div class="summary-value" id="sumPiutang">Rp 0</div></div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon cashflow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>
+          <div><div class="summary-label">Cashflow</div><div class="summary-value" id="sumCashflow">Rp 0</div></div>
+        </div>
+      </div>
+
+      <!-- Donut -->
+      <div class="content-section">
+        <div class="section-header"><div class="section-title">Pengeluaran per Kategori</div></div>
+        <div class="card">
+          <div id="donutWrap" class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 120 120" id="donutChart"></svg>
+            <div class="donut-legend" id="donutLegend"></div>
+          </div>
+          <div id="donutEmpty" style="display:none;text-align:center;padding:16px;color:var(--text-secondary);font-size:13px">Belum ada data pengeluaran</div>
+        </div>
+      </div>
+
+      <!-- Trend Chart -->
+      <div class="content-section">
+        <div class="section-header"><div class="section-title">Tren Cashflow</div></div>
+        <div class="card"><div class="chart-container"><canvas id="trendChart"></canvas></div></div>
+      </div>
+
+      <!-- Recent Txn -->
+      <div class="content-section">
+        <div class="section-header">
+          <div class="section-title">Transaksi Terbaru</div>
+          <button class="section-link" onclick="navigateTo('transactions')">Lihat semua</button>
+        </div>
+        <div class="card" style="padding:8px 16px" id="recentTxnList"></div>
+      </div>
+
+      <!-- Saving Goals Widget -->
+      <div class="content-section">
+        <div class="section-header">
+          <div class="section-title">Target Tabungan</div>
+          <button class="section-link" onclick="navigateTo('savinggoals')">Lihat semua</button>
+        </div>
+        <div id="dashGoals"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: TRANSACTIONS -->
+  <div class="page" id="pageTransactions">
+    <div class="page-header">
+      <div class="page-title">Transaksi</div>
+      <button class="btn-icon" onclick="exportCSV()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+    </div>
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Cari transaksi..." id="txnSearch" oninput="filterTransactions()">
+    </div>
+    <input type="month" class="form-input" id="txnMonthFilter" onchange="filterTransactions()" style="height:44px;font-size:14px;margin-bottom:12px">
+    <div class="chip-group" style="margin-bottom:16px">
+      <button class="chip active" onclick="setTxnTypeFilter(this,'all')">Semua</button>
+      <button class="chip" onclick="setTxnTypeFilter(this,'income')">Income</button>
+      <button class="chip" onclick="setTxnTypeFilter(this,'expense')">Expense</button>
+    </div>
+    <div id="txnList"></div>
+  </div>
+
+  <!-- PAGE: BUDGET -->
+  <div class="page" id="pageBudget">
+    <div class="page-header">
+      <div class="page-title">Budget</div>
+      <button class="btn-icon" onclick="openBudgetModal()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    </div>
+    <input type="month" class="form-input" id="budgetMonth" onchange="loadBudgets()" style="height:44px;font-size:14px;margin-bottom:16px">
+    <div id="budgetList"></div>
+  </div>
+
+  <!-- PAGE: SAVING GOALS -->
+  <div class="page" id="pageSavingGoals">
+    <div class="page-header">
+      <div class="page-title">Saving Goals</div>
+      <button class="btn-icon" onclick="openGoalModal()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    </div>
+    <div id="goalList"></div>
+  </div>
+
+  <!-- PAGE: REPORTS -->
+  <div class="page" id="pageReports">
+    <div class="page-header"><div class="page-title">Laporan</div></div>
+    <div class="tab-bar" id="reportTabs">
+      <div class="tab-item active" onclick="setReportTab(this,'overview')">Ringkasan</div>
+      <div class="tab-item" onclick="setReportTab(this,'category')">Kategori</div>
+      <div class="tab-item" onclick="setReportTab(this,'trend')">Tren</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="month" class="form-input" id="reportStart" style="height:44px;font-size:14px;flex:1;min-width:0">
+      <input type="month" class="form-input" id="reportEnd" style="height:44px;font-size:14px;flex:1;min-width:0">
+    </div>
+    <button class="btn btn-secondary btn-block btn-sm" onclick="loadReport()" style="margin-bottom:16px">Tampilkan</button>
+    <div id="reportContent"></div>
+  </div>
+
+  <!-- PAGE: ACCOUNTS -->
+  <div class="page" id="pageAccounts">
+    <div class="page-header">
+      <div class="page-title">Akun</div>
+      <button class="btn-icon" onclick="openAccountModal()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+    </div>
+    <div id="accountList"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="navigateTo('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" onclick="navigateTo('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+      <span>Transaksi</span>
+    </button>
+    <button class="fab-nav" onclick="openTransactionModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="nav-item" onclick="navigateTo('reports')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      <span>Laporan</span>
+    </button>
+    <button class="nav-item" onclick="navigateTo('accounts')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Akun</span>
+    </button>
+  </nav>
+
+</div><!-- /appWrapper -->
+
+<!-- All modals are in modals.html included via JS -->
+<div id="modalsContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
