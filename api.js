@@ -2,7 +2,7 @@
  * API layer - JSONP to bypass CORS with Google Apps Script
  */
 
-var GAS_URL = '';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbwBWUqW_BvJdTM7t1Gqv5PX8dmO8dDX1_9bXlQ7o_fD8cP_t38ibQo4qopXKwBYD_xm/exec?action=getDashboard&callback=test&data={}';
 
 function initAPI() {
   GAS_URL = localStorage.getItem('gasUrl') || '';
