@@ -1,5 +1,5 @@
 /**
- * API layer - communicates with Google Apps Script backend
+ * API layer - JSONP to bypass CORS with Google Apps Script
  */
 
 var GAS_URL = '';
@@ -16,50 +16,57 @@ function initAPI() {
 function saveConfig() {
   var url = document.getElementById('gasUrl').value.trim();
   if (!url || !url.includes('script.google.com')) {
-    showToast('URL tidak valid','error');
+    showToast('URL tidak valid', 'error');
     return;
   }
   localStorage.setItem('gasUrl', url);
   GAS_URL = url;
   document.getElementById('screenConfig').style.display = 'none';
-  showToast('Tersambung! Memuat data...','success');
+  showToast('Tersambung! Memuat data...', 'success');
   initApp();
 }
 
-async function apiGet(action, params) {
-  var url = new URL(GAS_URL);
-  url.searchParams.set('action', action);
-  if (params) {
-    Object.keys(params).forEach(function(k) {
-      if (params[k] !== undefined && params[k] !== null) {
-        url.searchParams.set(k, params[k]);
-      }
-    });
-  }
-  var res = await fetch(url.toString(), { method: 'GET' });
-  var data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
-}
+/**
+ * JSONP request - bypasses CORS completely
+ * All data (including mutations) sent as GET params
+ */
+function api(action, data) {
+  return new Promise(function(resolve, reject) {
+    var cbName = '_cb' + Date.now() + Math.random().toString(36).substr(2, 5);
+    var script = document.createElement('script');
+    var url = new URL(GAS_URL);
 
-async function apiPost(action, body) {
-  body = body || {};
-  body.action = action;
-  var res = await fetch(GAS_URL, {
-    method: 'POST',
-    body: JSON.stringify(body)
+    url.searchParams.set('action', action);
+    url.searchParams.set('callback', cbName);
+
+    // All data encoded as JSON string in 'data' param
+    if (data && Object.keys(data).length > 0) {
+      url.searchParams.set('data', JSON.stringify(data));
+    }
+
+    var timeout = setTimeout(function() {
+      cleanup();
+      reject(new Error('Request timeout. Coba lagi.'));
+    }, 30000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(result) {
+      cleanup();
+      if (result && result.error) reject(new Error(result.error));
+      else resolve(result);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      reject(new Error('Gagal terhubung ke server. Periksa URL GAS.'));
+    };
+
+    script.src = url.toString();
+    document.body.appendChild(script);
   });
-  var data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
-}
-
-// ── Convenience wrappers ──
-async function api(action, data, isGet) {
-  try {
-    return isGet ? await apiGet(action, data) : await apiPost(action, data);
-  } catch(e) {
-    console.error(action, e);
-    throw e;
-  }
 }
